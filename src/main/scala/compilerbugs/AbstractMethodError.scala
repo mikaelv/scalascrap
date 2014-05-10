@@ -30,18 +30,21 @@ object AbstractMethodError extends App {
 
     type F = A with B
     type R = E[F]
-    //type RR = E[F with C]
-    // works if I replace by:
     type RR = E[F with C]
+    // works if I replace by:
+    //type RR = E[A with B with C]
 
     override def f2(r: R): RR = new E[F with C]()
     override def f3(rr: RR) { println("This should be printed")}
 
   }
 
-  type F1 = A with B
-  type F2 = A with D
+
+
+  // https://issues.scala-lang.org/browse/SI-8575
   new Impl().f1(new E[A with B]())
+
+
 
 
 }
