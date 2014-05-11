@@ -1,9 +1,9 @@
 package com.mikaelv.scalascrap.compilerbugs
 
 /**
- * [[https://issues.scala-lang.org/browse/SI-8575]]
+ * Fixes the issue discovered in [[AbstractMethodError]]
  */
-object AbstractMethodError extends App {
+object AbstractMethodErrorFixed extends App {
 
   class E[F]
   class A
@@ -14,9 +14,9 @@ object AbstractMethodError extends App {
   type F2 = F1 with C with D
 
 
-  trait Intf {
-    type R
-    type RR
+
+  // solution: use type parameters instead of abstract types
+  trait Intf[R, RR] {
 
     def f1(r: R) {
       val rr = f2(r)
@@ -27,20 +27,20 @@ object AbstractMethodError extends App {
     def f3(r: RR)
   }
 
-  class Impl extends Intf {
+  class Impl extends Intf[E[F1], E[F2]] {
 
-    type R = E[F1]
-    type RR = E[F1 with C]
     // works if I replace by:
     //type RR = E[A with B with C]
 
-    override def f2(r: E[F1]): E[F1 with C] = new E[F1 with C]()
-    override def f3(rr: E[F1 with C]) { println("This should be printed")}
+    override def f2(r: E[F1]): E[F2] = new E[F1 with C with D]()
+    override def f3(rr: E[F2]) { println("This should be printed")}
 
   }
 
 
   new Impl().f1(new E[A with B]())
+
+
 
 
 }
