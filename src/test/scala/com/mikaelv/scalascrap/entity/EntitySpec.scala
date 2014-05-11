@@ -1,4 +1,4 @@
-package entity
+package com.mikaelv.scalascrap.entity
 
 import org.scalatest.{Matchers, FunSpec}
 import scala.reflect.runtime.universe._

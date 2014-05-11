@@ -1,4 +1,4 @@
-package compilerbugs
+package com.mikaelv.scalascrap.compilerbugs
 
 /**
  * Created by mikael on 10/05/2014.

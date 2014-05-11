@@ -1,8 +1,8 @@
-package entity
+package com.mikaelv.scalascrap.entity
 
 import scala.reflect.runtime.universe._
-import entity.EntityTest.{F2, F1}
 import scala.reflect.ClassTag
+import com.mikaelv.scalascrap.entity.SampleDomain._
 
 /**
  * Created by mikael on 10/05/2014.
@@ -18,16 +18,20 @@ object Entity {
   def empty: Entity[Unit] = new Entity(Set.empty)
 }
 
-class A
-case class B(value: String)
-case class C(value: String)
-case class D(value: String)
-class E
-class DD
 
 
+object SampleDomain {
 
+  class A
+  case class B(value: String)
+  case class C(value: String)
+  case class D(value: String)
+  class E
+  class DD
 
+  type F1 = A with B with Unit
+  type F2 = A with D with Unit
+}
 
 
 abstract class Intf {
@@ -76,10 +80,9 @@ class ImplPoly[F <: A] extends Intf {
 
 }
 
-object EntityTest extends App {
 
-  type F1 = A with B with Unit
-  type F2 = A with D with Unit
+
+object EntityTest extends App {
 
 
   // Polymorphism
