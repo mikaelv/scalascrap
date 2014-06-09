@@ -18,7 +18,14 @@ case class Record[+F](private val fields: Map[RecordKey, Any]) {
 }
 
 object Record {
+  trait Encodable[E] {
+    def encode: E
+  }
   def apply[T](t: T)(implicit k: RecordKeyProvider[T]): Record[T] = new Record(Map(k.key -> t))
+
+  def convertToEncodable[F, E](record: Record[F])(implicit encodeFormat: EncoderMonoid[E], encoder: RecordEncoder[F, E]) = new Encodable[E] {
+    override def encode: E = encoder.encode(record)
+  }
 }
 
 case class RecordKey(value: String)
@@ -32,44 +39,12 @@ object RecordKeyProvider {
   implicit def convertToSome[T](implicit rk: RecordKeyProvider[T]): RecordKeyProvider[Some[T]] = new RecordKeyProvider[Some[T]](RecordKey(rk.key.value))
 }
 
-/** Type class that encodes a type T into a E */
-trait Encoder[T, E]  {
-  def encode(t: T): E
-
-}
-
-trait EncoderMonoid[E] {
-  def op(e1: E, e2: E): E
-  def zero: E
-}
 
 
-/** Encodes a Record into an arbitrary format defined by:
-  * - an Encoder instance for each type composing the record
-  * - a EncoderMonoid instance for combining the Encoder results
-  */
-case class RecordEncoder[Fields, E : EncoderMonoid](private val fieldEncoders: Map[RecordKey, Encoder[_, E]]) {
 
 
-  def add[T](implicit encoder: Encoder[T, E], keyp: RecordKeyProvider[T]) =
-    new RecordEncoder[Fields with T, E](fieldEncoders + (keyp.key -> encoder))
-  
-  def encode(record: Record[Fields]): E = {
-    val monoid = implicitly[EncoderMonoid[E]]
 
-    def getEncoder[T](key: RecordKey): Encoder[T, E] = fieldEncoders(key).asInstanceOf[Encoder[T, E]]
 
-    def encodeField[T](key: RecordKey) = getEncoder(key).encode(record.getByKey(key).asInstanceOf[T])
-
-    val encodedFields = fieldEncoders.keys map encodeField
-    encodedFields.fold(monoid.zero)(monoid.op)
-  }
-}
-
-object RecordEncoder {
-  def apply[T, E : EncoderMonoid](implicit encoder: Encoder[T, E], keyp: RecordKeyProvider[T]) =
-    new RecordEncoder[T, E](Map(keyp.key -> encoder))
-}
 
 
 

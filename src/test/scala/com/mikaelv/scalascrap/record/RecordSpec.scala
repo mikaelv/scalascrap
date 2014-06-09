@@ -73,8 +73,15 @@ class RecordSpec extends FunSpec with Matchers {
     implicit val sampleEnumEncoder = new Encoder[SampleEnum, String] {
       override def encode(t: SampleEnum): String = "SampleEnum="+t.name()
     }
+    implicit val nilEncoder = new Encoder[Unit, String] {
+      override def encode(t: Unit): String = ""
+    }
+    implicit val nilKeyProvider = RecordKeyProvider[Unit](RecordKey("nil"))
 
 
+    //implicit val re0 = RecordEncoder[Unit, String]
+    //implicit val re1 = RecordEncoder[X with Unit, String]
+    //val encoder = RecordEncoder[X with Y, String].add[SampleEnum]
     val encoder = RecordEncoder[X, String].add[Y].add[SampleEnum]
 
     it("should encode a Record to a String") {
@@ -85,5 +92,14 @@ class RecordSpec extends FunSpec with Matchers {
           |Y=25
           |SampleEnum=Bar""".stripMargin)
     }
+
+    /* TODO it("should be resolved implicitly") {
+      val rec = Record(x).add(Y(10)).add(z)
+      rec.encode should be(
+        """
+          |X=x
+          |Y=25
+          |SampleEnum=Bar""".stripMargin)
+    }*/
   }
 }
