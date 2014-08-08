@@ -2,6 +2,7 @@ package com.mikaelv.scalascrap.record
 
 import org.scalatest.{Matchers, FunSpec}
 import scala.reflect.runtime.universe._
+import com.mikaelv.scalascrap.record
 
 /**
  *
@@ -79,8 +80,9 @@ class RecordSpec extends FunSpec with Matchers {
     implicit val nilKeyProvider = RecordKeyProvider[Unit](RecordKey("nil"))
 
 
-    //implicit val re0 = RecordEncoder[Unit, String]
-    //implicit val re1 = RecordEncoder[X with Unit, String]
+    implicit val re0 = RecordEncoder[Unit, String]
+    //implicit val re1: RecordEncoder[Unit with X, String] = RecordEncoder.makeRecordEncoder1[X, Unit, String](re0)
+    //val re1b = implicitly[RecordEncoder[Unit with X, String]]
     //val encoder = RecordEncoder[X with Y, String].add[SampleEnum]
     val encoder = RecordEncoder[X, String].add[Y].add[SampleEnum]
 

@@ -1,6 +1,9 @@
 package com.mikaelv.scalascrap.record
 
-
+/** Conjunction of two types, can be used in record type parameter.
+  * This could be useful to extract the Encoder type classes with implicits.
+  * The big problem is that we add fields in the right order, as opposed to the "with" approach */
+trait /\[A,B]
 
 /**
  * Flexible record implementation.

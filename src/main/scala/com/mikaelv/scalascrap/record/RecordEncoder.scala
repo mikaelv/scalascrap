@@ -44,8 +44,8 @@ object RecordEncoder {
   /*implicit def makeRecordEncoder0[E](implicit monoid: EncoderMonoid[E]): RecordEncoder[Unit, E] =
   new RecordEncoder[Unit, E](Map.empty)*/
 
-  // TODO: could it work with a Not type, i.e. implicit ev : T :/: F ??
-  /*implicit def makeRecordEncoder1[T, F, E](implicit ev: T <:< F, re0: RecordEncoder[F, E], encoder: Encoder[T, E], keyp: RecordKeyProvider[T], monoid: EncoderMonoid[E]):
+  // TODO: =!= constaint disambiguates the implicit, but possibly too much, as the conversion does not happen
+  implicit def makeRecordEncoder1[T, F, E](re0: RecordEncoder[F, E])(implicit ev: T =!= F, encoder: Encoder[T, E], keyp: RecordKeyProvider[T], monoid: EncoderMonoid[E]):
   RecordEncoder[F with T, E] =
-    re0.add[T]*/
+    re0.add[T]
 }
