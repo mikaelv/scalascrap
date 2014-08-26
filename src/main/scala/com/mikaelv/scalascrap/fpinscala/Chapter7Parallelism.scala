@@ -69,13 +69,13 @@ object Chapter7Parallelism {
     // Exercise 4
     def asyncF[A, B](f: A => B): A => Par[B] = a => lazyUnit(f(a))
 
-    def parMap[A, B](l: Seq[A])(f: A => B): Par[Seq[B]] = {
+    def parMap[A, B](l: Seq[A])(f: A => B): Par[IndexedSeq[B]] = {
       val fbs: Seq[Par[B]] = l.map(asyncF(f))
       sequence(fbs)
     }
 
     // Exercise 5
-    def sequence[A](l: Seq[Par[A]]): Par[Seq[A]] = (es:ExecutorService) => {
+    def sequence[A](l: Seq[Par[A]]): Par[IndexedSeq[A]] = (es:ExecutorService) => {
       // Remark: The sequence is waiting in the main thread, which may not be desirable
       TimedFuture {
         l.foldLeft(Vector.empty[A]) { (vecA, pa) => pa(es).get._1 +: vecA }
@@ -92,6 +92,8 @@ object Chapter7Parallelism {
 
     def map[A, B](a: Par[A])(f: A => B): Par[B] = map2(a, unit(())){(a, _) => f(a)}
 
+    def flatMap[A, B](a: Par[A])(f: A => Par[B]): Par[B] = flatten(map(a)(f))
+
     def map2[A, B , C](a: Par[A], b: Par[B])(f: (A, B) => C): Par[C] = (es: ExecutorService) => {
       // Exercise 3 respect timeouts
       // af and bf are executed concurrently
@@ -102,6 +104,22 @@ object Chapter7Parallelism {
         val (rb, tb) = bf.get(Math.max(0, bf.timeout -ta), TimeUnit.MILLISECONDS)
         f(ra, rb)
       }
+    }
+
+    def map3[A, B , C, D](a: Par[A], b: Par[B], c: Par[C])(f: (A, B, C) => D): Par[D] = {
+      val cd: Par[C => D] = map2(a, b)(f.curried(_)(_))
+      map2(cd, c)(_(_))
+    }
+
+    def map4[A, B, C, D, E](a: Par[A], b: Par[B], c: Par[C], d: Par[D])(f: (A, B, C, D) => E): Par[E] = {
+      val ab: Par[(A, B)] = map2(a, b)((a,b) => (a, b))
+      val cd: Par[(C, D)] = map2(c, d)((c, d) => (c, d))
+      val solution1 = map2(ab, cd)((ab, cd) => f(ab._1, ab._2, cd._1, cd._2))
+
+      val cde: Par[C => D => E] = map2(a, b){(a, b) => f.curried(a)(b)}
+      val solution2 = map3(c, d, cde){ (c, d, cde) => cde(c)(d)}
+      solution2
+      //solution1
     }
 
     // fork musn't begin evaluating its argument immediately in parallel,
@@ -123,14 +141,41 @@ object Chapter7Parallelism {
 
 
     // TODO sum ends up in timeout if the thread pool size is < list size :-(
-    def sum(ints: IndexedSeq[Int]): Par[Int] =
-      if (ints.size <= 1)
-        Par.unit(ints.headOption getOrElse 0)
-      else {
-        val (l, r) = ints.splitAt(ints.length / 2)
-        Par.map2(Par.fork(sum(l)), Par.fork(sum(r)))(_ + _)
-      }
+    def sum(ints: IndexedSeq[Int]): Par[Int] = fold(ints)(0)(_ + _)
 
+    def max(ints: IndexedSeq[Int]): Par[Int] = fold(ints)(Integer.MIN_VALUE)(Math.max)
+
+    def nbOfWords(paragraphs: List[String]): Par[Int] = {
+      def wordCount(p: String): Int = "\\w+".r.findAllIn(p).size
+      traverse(paragraphs.toIndexedSeq, 0)(wordCount)( _ + _)
+    }
+
+    def traverse[A, B](seq: IndexedSeq[A], zero: B)(f: A => B)(append: (B, B) => B): Par[B] = {
+      val seqpb: IndexedSeq[Par[B]] = seq.map(asyncF(f))
+      val ppb: Par[Par[B]] = fold(seqpb)(unit(zero)){ (l, r) =>
+        map2(l, r)(append)
+      }
+      flatten(ppb)
+    }
+
+
+
+    def flatten[A](p: Par[Par[A]]): Par[A] = { es: ExecutorService =>
+      run(es)(p).get._1(es)
+    }
+
+
+    def fold[A](seq: IndexedSeq[A])(zero: A)(op: (A, A) => A): Par[A] = {
+      if (seq.size <= 1)
+        Par.unit(seq.headOption getOrElse zero)
+      else {
+        val (l, r) = seq.splitAt(seq.length / 2)
+        val pl = Par.fork(fold(l)(zero)(op))
+        val pr = Par.fork(fold(r)(zero)(op))
+
+        map2(pl, pr) {op}
+      }
+    }
 
     def parFilter[A](l: List[A])(f: A => Boolean): Par[Seq[A]] = {
       val optA = l.map(asyncF { a =>
@@ -141,6 +186,8 @@ object Chapter7Parallelism {
       })
       Par.map(sequence(optA))(_.flatten)
     }
+
+    // Excercise 7
   }
 
   object ParTest {
