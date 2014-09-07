@@ -187,8 +187,24 @@ object Chapter7Parallelism {
       Par.map(sequence(optA))(_.flatten)
     }
 
-    // Excercise 7
+
   }
+
+  object ParLaws {
+    // Excercise 7
+    // Given map(y)(id) == y, it's a free theorem that map(map(y)(g))(f) == map(y)(f compose g)
+    import Par.{map, unit}
+    def law1[X, A, B](x: X, y: Par[X], g: X => A, f: A => B) {
+      map(y)(identity) == y
+      map(unit(x))(g) == unit(g(x))
+      //map(unit(x))(f) == unit(f(x))
+
+      //map(y)(g) == unit(g(y))
+
+      map( map(y)(g) )(f) == map(y)(f compose g)
+    }
+  }
+
 
   object ParTest {
     //import com.mikaelv.scalascrap.fpinscala.Chapter7Parallelism.Par
