@@ -4,6 +4,8 @@ import org.scalatest.{Matchers, FunSpec}
 import scala.reflect.runtime.universe._
 import com.mikaelv.scalascrap.record
 import scala.reflect.ClassTag
+import scalaz.Monoid
+import shapeless._
 
 /**
  *
@@ -60,36 +62,43 @@ class RecordSpec extends FunSpec with Matchers {
   }
 
   describe("A RecordEncoder") {
-    implicit val encoderMonoid = new EncoderMonoid[String] {
-      override def op(e1: String, e2: String): String =
-        if (e1 == "") e2 else e1 + ", " + e2
+    implicit val encoderMonoid = new Monoid[String] {
 
+     override def append(e1: String, e2: => String): String =
+        if (e1 == "") e2 else if (e2 == "") e1 else e1 + ", " + e2
 
       override def zero: String = ""
     }
     
-    implicit val nameEncoder = new Encoder[Name, String] {
+    implicit val nameEncoder = new JsonEncoder[Name] {
       override def encode(t: Name): String = s"""name: "${t.v}""""
     }
-    implicit val ageEncoder = new Encoder[Age, String] {
+    implicit val ageEncoder = new JsonEncoder[Age] {
       override def encode(t: Age): String = s"""age: ${t.v}"""
     }
 
-    val encoder = RecordEncoder[Name, String].add[Age]
+    val rec = Record(name).add(Age(10))
 
     it("should encode a Record to Json") {
-      val rec = Record(name).add(Age(10))
-      encoder.encode(rec) should be(
-        """name: "mikael", age: 10""")
+      val encoder = RecordEncoder[Name, String].add[Age]
+      encoder.encode(rec) should be("""name: "mikael", age: 10""")
     }
 
-    /* TODO it("should be resolved implicitly") {
-      val rec = Record(name).add(Age(10)).add(z)
-      rec.encode should be(
-        """
-          |Name=name
-          |Age=25
-          |SampleEnum=Bar""".stripMargin)
-    }*/
+    it("should be resolved implicitly") {
+      type Person = Record[Name with Age]
+      implicit object PersonGeneric extends Generic[Person] {
+        override type Repr = Name :: Age :: HNil
+
+        override def from(r: PersonGeneric.Repr): Person = Record(r.head).add(r.last)
+
+        override def to(t: Person): PersonGeneric.Repr = t.get[Name] :: t.get[Age] :: HNil
+      }
+      // Double transformation is identity
+      PersonGeneric.from(PersonGeneric.to(rec)) should be(rec)
+
+      import JsonEncoder._
+      val encoder = JsonEncoder[Person]
+      encoder.encode(rec) should be("""name: "mikael", age: 10""")
+    }
   }
 }

@@ -1,5 +1,7 @@
 package com.mikaelv.scalascrap.record
 
+import scalaz.Monoid
+
 /** Conjunction of two types, can be used in record type parameter.
   * This could be useful to extract the Encoder type classes with implicits.
   * The big problem is that we add fields in the right order, as opposed to the "with" approach */
@@ -26,7 +28,7 @@ object Record {
   }
   def apply[T](t: T)(implicit k: RecordKeyProvider[T]): Record[T] = new Record(Map(k.key -> t))
 
-  def convertToEncodable[F, E](record: Record[F])(implicit encodeFormat: EncoderMonoid[E], encoder: RecordEncoder[F, E]) = new Encodable[E] {
+  def convertToEncodable[F, E](record: Record[F])(implicit encodeFormat: Monoid[E], encoder: RecordEncoder[F, E]) = new Encodable[E] {
     override def encode: E = encoder.encode(record)
   }
 }
