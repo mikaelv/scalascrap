@@ -41,11 +41,12 @@ object RecordEncoder {
   def apply[T, E](implicit e: Encoder[T, E], k: RecordKeyProvider[T], monoid: EncoderMonoid[E]) = new RecordEncoder[T, E](Map(k.key -> e))
 
 
+
   /*implicit def makeRecordEncoder0[E](implicit monoid: EncoderMonoid[E]): RecordEncoder[Unit, E] =
   new RecordEncoder[Unit, E](Map.empty)*/
 
   // TODO: =!= constaint disambiguates the implicit, but possibly too much, as the conversion does not happen
-  implicit def makeRecordEncoder1[T, F, E](re0: RecordEncoder[F, E])(implicit ev: T =!= F, encoder: Encoder[T, E], keyp: RecordKeyProvider[T], monoid: EncoderMonoid[E]):
+  /*implicit def makeRecordEncoder1[T, F, E](re0: RecordEncoder[F, E])(implicit ev: T =!= F, encoder: Encoder[T, E], keyp: RecordKeyProvider[T], monoid: EncoderMonoid[E]):
   RecordEncoder[F with T, E] =
-    re0.add[T]
+    re0.add[T]*/
 }

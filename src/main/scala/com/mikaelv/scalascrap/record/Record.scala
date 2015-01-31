@@ -8,7 +8,7 @@ trait /\[A,B]
 /**
  * Flexible record implementation.
   */
-case class Record[+F](private val fields: Map[RecordKey, Any]) {
+case class Record[F](private val fields: Map[RecordKey, Any]) {
   private[record] def getByKey(key: RecordKey): Any = fields(key)
   
   /** Adds a field. Pass an Option[T] if the field is optional */

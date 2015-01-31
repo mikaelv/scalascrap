@@ -3,22 +3,22 @@ package com.mikaelv.scalascrap.record
 import org.scalatest.{Matchers, FunSpec}
 import scala.reflect.runtime.universe._
 import com.mikaelv.scalascrap.record
+import scala.reflect.ClassTag
 
 /**
  *
  */
 class RecordSpec extends FunSpec with Matchers {
-  case class X(v: String)
-  case class Y(v: Int)
+  case class Name(v: String)
+  case class Age(v: Int)
   //case class Z(v: SampleEnum)
 
-  implicit val implicitX = RecordKeyProvider[X](RecordKey("x"))
-  implicit val implicitY = RecordKeyProvider[Y](RecordKey("y"))
-  implicit val implicitZ = RecordKeyProvider[SampleEnum](RecordKey("sampleEnum"))
-  
-  val x = X("x")
-  val x1 = X("x1")
-  val y = Y(25)
+  // Provides a key using the Class name. Beware of ADT types: use Option(x) instead of Some(x)
+  implicit def simpleNameRecordKeyProvider[A : TypeTag]: RecordKeyProvider[A] = RecordKeyProvider[A](RecordKey(implicitly[TypeTag[A]].tpe.toString))
+
+  val name = Name("mikael")
+  val name1 = Name("name1")
+  val age = Age(25)
   val z = SampleEnum.Bar
   
   
@@ -26,81 +26,69 @@ class RecordSpec extends FunSpec with Matchers {
 
 
     it("should allow to add new arbitrary fields")  {
-      val e2 = Record(x).add(y)
+      val e2 = Record(name).add(age)
 
-      assert(typeOf[e2.type] <:< typeOf[Record[X with Y]], "e2 conforms to Record[A with B]")
+      assert(typeOf[e2.type] <:< typeOf[Record[Name with Age]], "e2 conforms to Record[A with B]")
     }
 
     it("should allow to get an added field") {
-      val e2 = Record(x).add(Y(10)).add(y)
-      e2.get[X] should be(x)
-      e2.get[Y] should be(y)
+      val e2 = Record(name).add(Age(10)).add(age)
+      e2.get[Name] should be(name)
+      e2.get[Age] should be(age)
     }
 
     it("should forbid to get a non added field") {
-      val e2 = Record(x).add(y)
+      val e2 = Record(name).add(age)
       assertTypeError("e2.get[Z]")
     }
 
     it("should allow to add optional fields") {
-      val e2 = Record(Some(x))
-      e2.get[Option[X]] should be(Some(x))
+      val e2 = Record(Option(name))
+      e2.get[Option[Name]] should be(Some(name))
 
-      assertTypeError("e2.get[X]")
+      assertTypeError("e2.get[Name]")
     }
 
     it("should allow to write functions that accept a Record with more Fields than the type parameter") {
-      def fn(record: Record[X with Y]): X = {
-        record.get[X]
+      def fn(record: Record[Name with Age]): Name = {
+        record.get[Name]
       }
 
-      fn(Record(x).add(y).add(z)) should be(x)
+      fn(Record(name).add(age).add(z)) should be(name)
     }
 
   }
 
   describe("A RecordEncoder") {
     implicit val encoderMonoid = new EncoderMonoid[String] {
-      override def op(e1: String, e2: String): String = e1 + "\n" + e2
+      override def op(e1: String, e2: String): String =
+        if (e1 == "") e2 else e1 + ", " + e2
+
 
       override def zero: String = ""
     }
-    implicit val xEncoder = new Encoder[X, String] {
-      override def encode(t: X): String = "X="+x.v
+    
+    implicit val nameEncoder = new Encoder[Name, String] {
+      override def encode(t: Name): String = s"""name: "${t.v}""""
     }
-    implicit val yEncoder = new Encoder[Y, String] {
-      override def encode(t: Y): String = "Y="+y.v
+    implicit val ageEncoder = new Encoder[Age, String] {
+      override def encode(t: Age): String = s"""age: ${t.v}"""
     }
-    implicit val sampleEnumEncoder = new Encoder[SampleEnum, String] {
-      override def encode(t: SampleEnum): String = "SampleEnum="+t.name()
-    }
-    implicit val nilEncoder = new Encoder[Unit, String] {
-      override def encode(t: Unit): String = ""
-    }
-    implicit val nilKeyProvider = RecordKeyProvider[Unit](RecordKey("nil"))
 
+    val encoder = RecordEncoder[Name, String].add[Age]
 
-    implicit val re0 = RecordEncoder[Unit, String]
-    //implicit val re1: RecordEncoder[Unit with X, String] = RecordEncoder.makeRecordEncoder1[X, Unit, String](re0)
-    //val re1b = implicitly[RecordEncoder[Unit with X, String]]
-    //val encoder = RecordEncoder[X with Y, String].add[SampleEnum]
-    val encoder = RecordEncoder[X, String].add[Y].add[SampleEnum]
-
-    it("should encode a Record to a String") {
-      val rec = Record(x).add(Y(10)).add(z)
+    it("should encode a Record to Json") {
+      val rec = Record(name).add(Age(10))
       encoder.encode(rec) should be(
-        """
-          |X=x
-          |Y=25
-          |SampleEnum=Bar""".stripMargin)
+        """name: "mikael", age: 10""")
     }
 
     /* TODO it("should be resolved implicitly") {
-      val rec = Record(x).add(Y(10)).add(z)
+      val rec = Record(name).add(Age(10)).add(z)
       rec.encode should be(
         """
-          |X=x
-          |Y=25
+          |Name=name
+          |Age=25
           |SampleEnum=Bar""".stripMargin)
     }*/
   }
