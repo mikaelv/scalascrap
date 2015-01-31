@@ -86,6 +86,13 @@ class RecordSpec extends FunSpec with Matchers {
 
     it("should be resolved implicitly") {
       type Person = Record[Name with Age]
+
+      // Double transformation is identity
+      implicit val personGeneric: Generic[Person] = RecordGeneric[Name].add[Age]
+      val hl = personGeneric.to(rec)
+      hl should be(Age(10) :: name :: HNil)
+      personGeneric.from(hl) should be(rec)
+
       implicit object PersonGeneric extends Generic[Person] {
         override type Repr = Name :: Age :: HNil
 
@@ -93,11 +100,8 @@ class RecordSpec extends FunSpec with Matchers {
 
         override def to(t: Person): PersonGeneric.Repr = t.get[Name] :: t.get[Age] :: HNil
       }
-      // Double transformation is identity
-      PersonGeneric.from(PersonGeneric.to(rec)) should be(rec)
-
       import JsonEncoder._
-      val encoder = JsonEncoder[Person]
+      val encoder = JsonEncoder[Person] // TODO why it doesn't work if implicit object PersonGeneric is not defined ???
       encoder.encode(rec) should be("""name: "mikael", age: 10""")
     }
   }
