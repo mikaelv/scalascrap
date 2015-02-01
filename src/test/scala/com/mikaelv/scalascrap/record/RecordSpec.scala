@@ -13,12 +13,14 @@ import shapeless._
 class RecordSpec extends FunSpec with Matchers {
   case class Name(v: String)
   case class Age(v: Int)
+  case class PostCode(v: String)
   //case class Z(v: SampleEnum)
 
   // Provides a key using the Class name. Beware of ADT types: use Option(x) instead of Some(x)
   implicit def simpleNameRecordKeyProvider[A : TypeTag]: RecordKeyProvider[A] = RecordKeyProvider[A](RecordKey(implicitly[TypeTag[A]].tpe.toString))
 
   val name = Name("mikael")
+  val postCode = PostCode("NW6")
   val name1 = Name("name1")
   val age = Age(25)
   val z = SampleEnum.Bar
@@ -76,27 +78,30 @@ class RecordSpec extends FunSpec with Matchers {
     implicit val ageEncoder = new JsonEncoder[Age] {
       override def encode(t: Age): String = s"""age: ${t.v}"""
     }
+    implicit val adrEncoder = new JsonEncoder[PostCode] {
+      override def encode(t: PostCode): String = s"""postcode: "${t.v}""""
+    }
 
-    val rec = Record(name).add(Age(10))
+    val rec = Record(name).add(Age(10)).add(postCode)
 
     it("should encode a Record to Json") {
-      val encoder = RecordEncoder[Name, String].add[Age]
-      encoder.encode(rec) should be("""name: "mikael", age: 10""")
+      val encoder = RecordEncoder[Name, String].add[Age].add[PostCode]
+      encoder.encode(rec) should be("""name: "mikael", age: 10, postcode: "NW6"""")
     }
 
     it("should be resolved implicitly") {
-      type Person = Record[Name with Age]
+      type Person = Record[Name with Age with PostCode]
 
       // Double transformation is identity
-      implicit val personGeneric: RecordGenericN[Age, Name] = RecordGeneric[Name].add[Age]
+      implicit val personGeneric = RecordGeneric[Name].add[Age].add[PostCode]
       val hl = personGeneric.to(rec)
-      hl should be(Age(10) :: name :: HNil)
+      hl should be(postCode :: Age(10) :: name :: HNil)
       personGeneric.from(hl) should be(rec)
-      implicitly[personGeneric.Repr =:= (Age :: Name :: HNil)]
+      implicitly[personGeneric.Repr =:= (PostCode :: Age :: Name :: HNil)]
 
       import JsonEncoder._
       val encoder = JsonEncoder[Person]
-      encoder.encode(rec) should be("""name: "mikael", age: 10""")
+      encoder.encode(rec) should be("""postcode: "NW6", age: 10, name: "mikael"""") // TODO RecordGeneric should not reverse the order
     }
   }
 }

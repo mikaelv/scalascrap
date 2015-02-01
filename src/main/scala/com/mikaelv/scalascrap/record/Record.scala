@@ -62,18 +62,27 @@ class RecordGeneric0[A: RecordKeyProvider] extends RecordGeneric[A] {
 
   override def to(t: Record[A]): Repr = t.get[A] :: HNil
 
-  def add[B : RecordKeyProvider]: RecordGenericN[B, A] = new RecordGenericN[B, A](this)
+  def add[B : RecordKeyProvider]: RecordGeneric1[B, A] = new RecordGeneric1[B, A](this)
 }
 
 /** HList to/from Record using a chained generic for the tail */
-class RecordGenericN[H : RecordKeyProvider, T](val tailGeneric: RecordGeneric0[T]) extends RecordGeneric[H with T] {
+class RecordGeneric1[H : RecordKeyProvider, T](val tailGeneric: RecordGeneric0[T]) extends RecordGeneric[H with T] {
   override type Repr = H :: tailGeneric.Repr
 
   override def from(r: Repr): Record[H with T] = Record(r.head).addAll[T](tailGeneric.from(r.tail))
 
   override def to(t: Record[H with T]): Repr = t.get[H] :: tailGeneric.to(t.shrink[T])
 
-  //def add[B : RecordKeyProvider]: RecordGenericN[B, H with T] = new RecordGenericN[B, H with T](this)
+  def add[B : RecordKeyProvider]: RecordGeneric2[B, H, T] = new RecordGeneric2[B, H, T](this)
+}
+
+class RecordGeneric2[H : RecordKeyProvider, T0, T1](val tailGeneric: RecordGeneric1[T0, T1]) extends RecordGeneric[H with T0 with T1] {
+  override type Repr = H :: tailGeneric.Repr
+
+  override def from(r: Repr): Record[H with T0 with T1] = Record(r.head).addAll[T0 with T1](tailGeneric.from(r.tail))
+
+  override def to(t: Record[H with T0 with T1]): Repr = t.get[H] :: tailGeneric.to(t.shrink[T0 with T1])
+
 }
 
 object RecordGeneric {
