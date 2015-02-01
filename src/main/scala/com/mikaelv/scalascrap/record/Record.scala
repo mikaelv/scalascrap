@@ -50,26 +50,30 @@ object RecordKeyProvider {
   implicit def convertToSome[T](implicit rk: RecordKeyProvider[T]): RecordKeyProvider[Some[T]] = new RecordKeyProvider[Some[T]](RecordKey(rk.key.value))
 }
 
+trait RecordGeneric[F] extends Generic[Record[F]] {
+  type Repr <: HList
+}
+
 /** HList to/from Record for a single type */
-class RecordGeneric0[A: RecordKeyProvider] extends Generic[Record[A]] {
+class RecordGeneric0[A: RecordKeyProvider] extends RecordGeneric[A] {
   override type Repr = A :: HNil
 
   override def from(r: Repr): Record[A] = Record(r.head)
 
   override def to(t: Record[A]): Repr = t.get[A] :: HNil
 
-  def add[B : RecordKeyProvider]: Generic[Record[B with A]] = new RecordGeneric[B, A](this)
+  def add[B : RecordKeyProvider]: RecordGenericN[B, A] = new RecordGenericN[B, A](this)
 }
 
 /** HList to/from Record using a chained generic for the tail */
-class RecordGeneric[H : RecordKeyProvider, T](val tailGeneric: Generic[Record[T]] {type Repr <: HList}) extends Generic[Record[H with T]] {
+class RecordGenericN[H : RecordKeyProvider, T](val tailGeneric: RecordGeneric0[T]) extends RecordGeneric[H with T] {
   override type Repr = H :: tailGeneric.Repr
 
   override def from(r: Repr): Record[H with T] = Record(r.head).addAll[T](tailGeneric.from(r.tail))
 
   override def to(t: Record[H with T]): Repr = t.get[H] :: tailGeneric.to(t.shrink[T])
 
-  def add[B : RecordKeyProvider]: Generic[Record[B with H with T]] = new RecordGeneric[B, H with T](this)
+  //def add[B : RecordKeyProvider]: RecordGenericN[B, H with T] = new RecordGenericN[B, H with T](this)
 }
 
 object RecordGeneric {

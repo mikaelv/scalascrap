@@ -88,20 +88,14 @@ class RecordSpec extends FunSpec with Matchers {
       type Person = Record[Name with Age]
 
       // Double transformation is identity
-      implicit val personGeneric: Generic[Person] = RecordGeneric[Name].add[Age]
+      implicit val personGeneric: RecordGenericN[Age, Name] = RecordGeneric[Name].add[Age]
       val hl = personGeneric.to(rec)
       hl should be(Age(10) :: name :: HNil)
       personGeneric.from(hl) should be(rec)
+      implicitly[personGeneric.Repr =:= (Age :: Name :: HNil)]
 
-      implicit object PersonGeneric extends Generic[Person] {
-        override type Repr = Name :: Age :: HNil
-
-        override def from(r: PersonGeneric.Repr): Person = Record(r.head).add(r.last)
-
-        override def to(t: Person): PersonGeneric.Repr = t.get[Name] :: t.get[Age] :: HNil
-      }
       import JsonEncoder._
-      val encoder = JsonEncoder[Person] // TODO why it doesn't work if implicit object PersonGeneric is not defined ???
+      val encoder = JsonEncoder[Person]
       encoder.encode(rec) should be("""name: "mikael", age: 10""")
     }
   }
